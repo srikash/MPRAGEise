@@ -1,4 +1,4 @@
-# MPRAGEise [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14926753.svg)](https://zenodo.org/badge/latestdoi/14926753)
+# MPRAGEise [![Version](https://img.shields.io/badge/version-1.9.2-purple.svg)](https://github.com/srikash/dichotomise/releases/tag/v1.9.2) [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE) [![CI](https://github.com/srikash/dichotomise/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/srikash/dichotomise/actions/workflows/ci.yml) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23102848.svg)](https://zenodo.org/badge/latestdoi/23102848) 
 
 Background denoise MP2RAGE UNI images (MPRAGEising) whilst either removing or reintroducing the bias field - Powered by **AFNI**
 
