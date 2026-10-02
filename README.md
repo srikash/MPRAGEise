@@ -54,9 +54,11 @@ Intermediate files live briefly in a `tmp_mprageise_<8-char hex>` subfolder of t
 
 ## Development
 
-`pip install pytest && pytest tests/`
+`uv sync --locked && uv run pytest`
 
-Tests run against a fake AFNI adapter and need no AFNI install. CI runs them on every push/PR via `.github/workflows/tests.yml`.
+Tests run against a fake AFNI adapter and need no AFNI install (without `uv`, `pip install pytest && pytest tests/` works too). CI (`.github/workflows/ci.yml`) runs the same suite across Python 3.12 and 3.13 on every push/PR, plus `uv run ruff format --check`, `uv run ruff check`, and `uv run mypy .`.
+
+On every push to `main`, CI tags a new version from `pyproject.toml` (if it's changed) and triggers `.github/workflows/release.yml`, which publishes to PyPI via trusted publishing (no stored token) after confirming that version isn't already there.
 
 ## Containerised usage
 

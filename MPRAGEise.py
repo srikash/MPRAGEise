@@ -70,7 +70,7 @@ def _write_afni_cache(afni_dir: str) -> None:
             json.dumps(
                 {
                     "afni_bin_dir": afni_dir,
-                    "resolved_at_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "resolved_at_utc": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 },
                 indent=2,
             )
@@ -119,9 +119,7 @@ def resolve_afni_path(explicit_path: str | None) -> None:
 def get_afni_version() -> str:
     """Return the AFNI version string by calling 'afni -ver'."""
     try:
-        result = subprocess.run(
-            ["afni", "-ver"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
+        result = subprocess.run(["afni", "-ver"], capture_output=True, text=True)
         return result.stdout.strip()
     except Exception:
         return "Unknown"
@@ -133,8 +131,10 @@ def parse_arguments() -> argparse.Namespace:
     italic_end = "\033[0m"
     epilog_text = (
         f"{italic_start}Nota bene:{italic_end}\n"
-        f"   {italic_start}1. By default, output goes to a new timestamped folder next to the INV2 image.{italic_end}\n"
-        f"   {italic_start}2. If you're unsure why one would need the re_bias option, you probably don't need it.{italic_end}\n"
+        f"   {italic_start}1. By default, output goes to a new timestamped folder next to the "
+        f"INV2 image.{italic_end}\n"
+        f"   {italic_start}2. If you're unsure why one would need the re_bias option, you "
+        f"probably don't need it.{italic_end}\n"
         f"   {italic_start}3. Do not use this script for the MP2RAGE T1 map.{italic_end}\n"
     )
     parser = argparse.ArgumentParser(
@@ -151,29 +151,36 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "-u", "--uni", required=True, help="MP2RAGE UNI image (e.g. /path/to/uni.nii.gz or uni+orig)"
     )
+    parser.add_argument("-r", "--re_bias", default="0", help="Reintroduce bias-field (default=0, optional).")
     parser.add_argument(
-        "-r", "--re_bias", default="0", help="Reintroduce bias-field (default=0, optional)."
-    )
-    parser.add_argument(
-        "-o", "--output", default=None,
+        "-o",
+        "--output",
+        default=None,
         help="Output folder for processed files (default: a new <UTC timestamp>_MPRAGEise_run "
-             "folder next to the INV2 image). If an existing, non-empty folder is given, "
-             "-overwrite is enabled automatically.",
+        "folder next to the INV2 image). If an existing, non-empty folder is given, "
+        "-overwrite is enabled automatically.",
     )
     parser.add_argument(
         "-overwrite", action="store_true", default=False, help="Include -overwrite flag in each AFNI command."
     )
     parser.add_argument(
-        "-afni-path", default=None, help="Directory containing the AFNI binaries (checked before $AFNI_HOME and PATH)."
+        "-afni-path",
+        default=None,
+        help="Directory containing the AFNI binaries (checked before $AFNI_HOME and PATH).",
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", default=False,
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=False,
         help="Enable verbose logging of command execution and debug information.",
     )
     parser.add_argument(
-        "-qc", action="store_true", default=False,
+        "-qc",
+        action="store_true",
+        default=False,
         help="Write a QC PNG comparing the UNI image before/after, with normalised intensity "
-             "histograms. Requires nibabel and matplotlib: pip install mprageise[full]",
+        "histograms. Requires nibabel and matplotlib: pip install mprageise[full]",
     )
     parser.add_argument("-version", action="version", version=f"%(prog)s {__version__}")
     return parser.parse_args()
@@ -212,9 +219,7 @@ class AfniDataset:
 
         if "+" in name:
             try:
-                result = subprocess.run(
-                    ["@GetAfniPrefix", filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-                )
+                result = subprocess.run(["@GetAfniPrefix", filename], capture_output=True, text=True)
                 basename = result.stdout.strip() if result.returncode == 0 else name.split("+")[0]
             except Exception:
                 basename = name.split("+")[0]
@@ -261,6 +266,7 @@ class _Ticker:
         if not self._active:
             return
         self._stop.set()
+        assert self._thread is not None  # set in __enter__ whenever _active is True
         self._thread.join()
         elapsed = time.monotonic() - self._start
         status = "done" if (self.ok and exc_type is None) else "failed"
@@ -275,7 +281,7 @@ def run_command(cmd: list[str], label: str | None = None) -> str:
     label = label or _STEP_LABELS.get(cmd[0], cmd[0])
     log.debug("Running command: %s", " ".join(cmd))
     with _Ticker(label) as ticker:
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
         ticker.ok = result.returncode == 0
     log.debug("Command stdout: %s", result.stdout)
     log.debug("Command stderr: %s", result.stderr)
@@ -326,7 +332,9 @@ class SubprocessAfniOps(AfniOps):
     def normalize(self, image: str, int_min: str, int_max: str, prefix: str, overwrite: bool = False) -> None:
         flag = ["-overwrite"] if overwrite else []
         expr = f"( a - {int_min} ) / ( {int_max} - {int_min} )"
-        run_command(["3dcalc"] + flag + ["-a", image, "-expr", expr, "-prefix", prefix], label="Normalising intensity")
+        run_command(
+            ["3dcalc"] + flag + ["-a", image, "-expr", expr, "-prefix", prefix], label="Normalising intensity"
+        )
 
     def multiply(self, a: str, b: str, prefix: str, overwrite: bool = False) -> None:
         flag = ["-overwrite"] if overwrite else []
@@ -364,7 +372,7 @@ def write_summary(
     MPRAGEise's version, when it ran, and input/output file sizes."""
     summary = {
         "mprageise_version": __version__,
-        "run_timestamp_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "run_timestamp_utc": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "command": command,
         "inputs": {
             "inv2": {"path": str(Path(inv2_image).resolve()), "size_bytes": file_size_bytes(inv2_image)},
@@ -467,8 +475,13 @@ def _plot_qc_panel(ax_img, ax_hist, data, mask, np, title: str, color: str, bins
     foreground = _foreground_values(data, mask, np)
     p_low, p_high = np.percentile(foreground, [0.05, 99.5])
     ax_hist.hist(
-        foreground, bins=bins, range=(p_low, p_high), density=True,
-        histtype="step", linewidth=2, color=color,
+        foreground,
+        bins=bins,
+        range=(p_low, p_high),
+        density=True,
+        histtype="step",
+        linewidth=2,
+        color=color,
     )
     ax_hist.set_xlim(p_low, p_high)
     for spine in ax_hist.spines.values():
@@ -530,10 +543,18 @@ def generate_qc_png(inv2_image: str, before_image: str, after_image: str, qc_pat
         return x_in / span
 
     fig = plt.figure(figsize=(page_w, page_h))
-    ax_img_before = fig.add_axes((_frac(img_lefts[0], page_w), _frac(img_bottom, page_h), _frac(img_in, page_w), _frac(img_in, page_h)))
-    ax_img_after = fig.add_axes((_frac(img_lefts[1], page_w), _frac(img_bottom, page_h), _frac(img_in, page_w), _frac(img_in, page_h)))
-    ax_hist_before = fig.add_axes((_frac(hist_lefts[0], page_w), _frac(hist_bottom, page_h), _frac(hist_in, page_w), _frac(hist_in, page_h)))
-    ax_hist_after = fig.add_axes((_frac(hist_lefts[1], page_w), _frac(hist_bottom, page_h), _frac(hist_in, page_w), _frac(hist_in, page_h)))
+    ax_img_before = fig.add_axes(
+        (_frac(img_lefts[0], page_w), _frac(img_bottom, page_h), _frac(img_in, page_w), _frac(img_in, page_h))
+    )
+    ax_img_after = fig.add_axes(
+        (_frac(img_lefts[1], page_w), _frac(img_bottom, page_h), _frac(img_in, page_w), _frac(img_in, page_h))
+    )
+    ax_hist_before = fig.add_axes(
+        (_frac(hist_lefts[0], page_w), _frac(hist_bottom, page_h), _frac(hist_in, page_w), _frac(hist_in, page_h))
+    )
+    ax_hist_after = fig.add_axes(
+        (_frac(hist_lefts[1], page_w), _frac(hist_bottom, page_h), _frac(hist_in, page_w), _frac(hist_in, page_h))
+    )
 
     y1 = _plot_qc_panel(ax_img_before, ax_hist_before, before, mask, np, "Before", QC_BEFORE_COLOR, bins=bins)
     y2 = _plot_qc_panel(ax_img_after, ax_hist_after, after, mask, np, "After", QC_AFTER_COLOR, bins=bins)
@@ -547,8 +568,17 @@ def generate_qc_png(inv2_image: str, before_image: str, after_image: str, qc_pat
     ax_hist_after.yaxis.set_label_position("right")
 
     fig.text(0.05, 0.975, f"MPRAGEise {__version__}", fontsize=9, color=QC_MUTED_INK, ha="left", va="top")
-    fig.text(0.05, 0.955, f"UNI: {Path(before_image).name}", fontsize=14, fontweight="bold", color=QC_PRIMARY_INK, ha="left", va="top")
-    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    fig.text(
+        0.05,
+        0.955,
+        f"UNI: {Path(before_image).name}",
+        fontsize=14,
+        fontweight="bold",
+        color=QC_PRIMARY_INK,
+        ha="left",
+        va="top",
+    )
+    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     fig.text(0.05, 0.025, timestamp, fontsize=9, color=QC_MUTED_INK, ha="left", va="bottom")
 
     fig.savefig(qc_path, dpi=150, facecolor="white")
@@ -556,7 +586,7 @@ def generate_qc_png(inv2_image: str, before_image: str, after_image: str, qc_pat
 
 
 def default_output_folder(inv2_image: str) -> Path:
-    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d_%H%M%S")
     return Path(inv2_image).resolve().parent / f"{timestamp}_MPRAGEise_run"
 
 

@@ -32,16 +32,16 @@ class FakeAfniOps(mp.AfniOps):
         return self._voxel_range
 
     def normalize(self, image, int_min, int_max, prefix, overwrite=False):
-        self._record("normalize", image=image, int_min=int_min, int_max=int_max, prefix=prefix, overwrite=overwrite)
+        self._record(
+            "normalize", image=image, int_min=int_min, int_max=int_max, prefix=prefix, overwrite=overwrite
+        )
 
     def multiply(self, a, b, prefix, overwrite=False):
         self._record("multiply", a=a, b=b, prefix=prefix, overwrite=overwrite)
 
 
 def run(ops, re_bias=False, overwrite=False, output="/out", work="/work"):
-    return mp.mpragise(
-        "/data/inv2.nii.gz", "/data/uni.nii.gz", Path(output), Path(work), re_bias, overwrite, ops
-    )
+    return mp.mpragise("/data/inv2.nii.gz", "/data/uni.nii.gz", Path(output), Path(work), re_bias, overwrite, ops)
 
 
 def test_bias_removal_calls_unifize_not_copy():
@@ -189,7 +189,9 @@ def test_resolve_afni_path_uses_cache_without_calling_which(monkeypatch, tmp_pat
 
 def test_resolve_afni_path_raises_with_helpful_message_when_nothing_found(monkeypatch, tmp_path):
     monkeypatch.setattr(mp, "AFNI_CACHE_PATH", tmp_path / "no_cache.json")
-    monkeypatch.setattr(mp, "AFNI_FALLBACK_DIRS", (str(tmp_path / "nonexistent-a"), str(tmp_path / "nonexistent-b")))
+    monkeypatch.setattr(
+        mp, "AFNI_FALLBACK_DIRS", (str(tmp_path / "nonexistent-a"), str(tmp_path / "nonexistent-b"))
+    )
     monkeypatch.setattr(mp.shutil, "which", lambda name: None)
     monkeypatch.setenv("PATH", "/usr/bin")
     monkeypatch.delenv("AFNI_HOME", raising=False)
@@ -236,8 +238,8 @@ def _bimodal_array(rng, shape, low=10, high=200):
 def test_generate_qc_png_creates_file(tmp_path):
     pytest.importorskip("nibabel")
     pytest.importorskip("matplotlib")
-    import numpy as np
     import nibabel as nib
+    import numpy as np
 
     rng = np.random.default_rng(0)
     shape = (8, 8, 8)

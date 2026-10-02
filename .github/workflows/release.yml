@@ -1,0 +1,65 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+
+      - name: Check whether version exists on PyPI
+        id: check-pypi
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -n 1)"
+          fi
+
+          if [[ -z "${version}" ]]; then
+            echo "Could not determine the package version." >&2
+            exit 1
+          fi
+
+          if ! status="$(curl --silent --show-error --output /dev/null \
+            --write-out '%{http_code}' \
+            "https://pypi.org/pypi/mprageise/${version}/json")"; then
+            echo "Could not check PyPI for version ${version}." >&2
+            exit 1
+          fi
+
+          case "${status}" in
+            200)
+              echo "Version ${version} already exists on PyPI; skipping publish."
+              echo "skip=true" >> "${GITHUB_OUTPUT}"
+              ;;
+            404)
+              echo "Version ${version} is not on PyPI; publishing."
+              echo "skip=false" >> "${GITHUB_OUTPUT}"
+              ;;
+            *)
+              echo "Unexpected PyPI response (${status}) for version ${version}." >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Build distributions
+        if: steps.check-pypi.outputs.skip != 'true'
+        run: uv build --no-sources
+
+      - name: Publish
+        if: steps.check-pypi.outputs.skip != 'true'
+        run: uv publish
