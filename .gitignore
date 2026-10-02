@@ -1,4 +1,7 @@
 CONTEXT.md
 .mprageise_afni_cache.json
 testdata/
+*.egg-info/
+__pycache__/
+.pytest_cache/
 

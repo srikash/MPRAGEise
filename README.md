@@ -11,13 +11,13 @@ Background denoise MP2RAGE UNI images (MPRAGEising) whilst either removing or re
 
 ## Usage
 
-**Preferred script:** [MPRAGEise.py](https://github.com/srikash/3dMPRAGEise/blob/main/MPRAGEise.py)  
+**Preferred script:** [MPRAGEise.py](https://github.com/srikash/MPRAGEise/blob/main/MPRAGEise.py)  
 *MPRAGEise.py is the Python implementation of the original shell script and is recommended for its easier interface and better logging capabilities.*
 
 **Setup:**
 
-`git clone https://github.com/srikash/3dMPRAGEise.git`  
-`cp 3dMPRAGEise/MPRAGEise.py $HOME/abin`  
+`git clone https://github.com/srikash/MPRAGEise.git`  
+`cp MPRAGEise/MPRAGEise.py $HOME/abin`  
 
 This install needs nothing beyond AFNI and the Python standard library. For `-qc` (below), either install its extra dependencies yourself (`pip install nibabel matplotlib`), or install the package instead: `pip install mprageise[full]`.
 
