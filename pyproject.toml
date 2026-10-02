@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mprageise"
+version = "1.9.2"
+description = "Background denoise MP2RAGE UNI images (MPRAGEising) whilst either removing or reintroducing the bias field - Powered by AFNI"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Sriranga Kashyap", email = "srikashmri@gmail.com" }]
+
+# Base install is deliberately stdlib + AFNI only, so `cp MPRAGEise.py $HOME/abin`
+# keeps working without pip at all. Heavier, optional features live in extras.
+dependencies = []
+
+[project.optional-dependencies]
+# -qc needs nibabel (read voxel data) + matplotlib (render the PNG).
+# Future optional features should add their own extra here rather than
+# growing the base `dependencies`.
+full = ["nibabel", "matplotlib"]
+
+[project.scripts]
+mprageise = "MPRAGEise:main"
+
+[tool.setuptools]
+py-modules = ["MPRAGEise"]
